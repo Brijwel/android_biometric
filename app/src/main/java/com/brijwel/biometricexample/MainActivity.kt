@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.AppCompatImageView
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.*
 import androidx.biometric.BiometricPrompt
@@ -24,9 +25,9 @@ class MainActivity : AppCompatActivity() {
 
     private val promptInfo: BiometricPrompt.PromptInfo by lazy {
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Biometric login for my app")
+            .setTitle("Biometric login")
             .setSubtitle("Log in using your biometric credential")
-            .setAllowedAuthenticators(BIOMETRIC_STRONG or BIOMETRIC_WEAK or DEVICE_CREDENTIAL)
+            .setAllowedAuthenticators(authenticators)
             .build()
     }
 
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         BiometricPrompt(this, executor, biometricCallback)
 
     }
+    private val authenticators = BIOMETRIC_STRONG or BIOMETRIC_WEAK or DEVICE_CREDENTIAL
 
 
     private val biometricCallback = object : BiometricPrompt.AuthenticationCallback() {
@@ -71,13 +73,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        findViewById<AppCompatImageView>(R.id.authentication).setOnClickListener {
-            authenticate()
+        findViewById<AppCompatImageView>(R.id.authentication).apply {
+            isEnabled = biometricManager.canAuthenticate(authenticators) ==
+                    BiometricManager.BIOMETRIC_SUCCESS
+            setOnClickListener {
+                authenticate()
+            }
         }
+        updateBioMetricStatus()
     }
 
     private fun authenticate() {
-        when (biometricManager.canAuthenticate(BIOMETRIC_STRONG or BIOMETRIC_WEAK or DEVICE_CREDENTIAL)) {
+        when (biometricManager.canAuthenticate(authenticators)) {
             BiometricManager.BIOMETRIC_SUCCESS -> {
                 biometricPrompt.authenticate(promptInfo)
             }
@@ -98,28 +105,55 @@ class MainActivity : AppCompatActivity() {
     private val biometricEnrollmentRequest =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             if (it.resultCode == Activity.RESULT_OK) {
-
+                updateBioMetricStatus()
             }
         }
-}
 
-private fun getFingerPrintEnrollmentIntent(): Intent {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
-            putExtra(
-                Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
-                BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-            )
+    private fun updateBioMetricStatus() {
+        findViewById<AppCompatTextView>(R.id.bioMetricStatus).text = getBioMetricStatus()
+    }
+
+    private fun getBioMetricStatus(): String {
+        return when (biometricManager.canAuthenticate(authenticators)) {
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> {
+                "Hardware Unavailable"
+            }
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                "Biometric None Enrolled"
+            }
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
+                "No Biometric Hardware"
+            }
+            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> {
+                "Security Update Required"
+            }
+            BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED -> {
+                "Un Supported"
+            }
+            BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> {
+                "Unknown"
+            }
+            BiometricManager.BIOMETRIC_SUCCESS -> {
+                "Available"
+            }
+            else -> "Unknown"
         }
-    } else {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            @Suppress("DEPRECATION")
-            Intent(Settings.ACTION_FINGERPRINT_ENROLL)
+    }
+
+    private fun getFingerPrintEnrollmentIntent(): Intent {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {
+                putExtra(
+                    Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,
+                    authenticators
+                )
+            }
         } else {
             Intent(Settings.ACTION_SECURITY_SETTINGS)
         }
     }
 }
+
 
 private fun Context.toast(message: String) {
     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
