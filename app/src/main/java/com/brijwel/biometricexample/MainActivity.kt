@@ -74,8 +74,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         findViewById<AppCompatImageView>(R.id.authentication).apply {
-            isEnabled = biometricManager.canAuthenticate(authenticators) ==
-                    BiometricManager.BIOMETRIC_SUCCESS
             setOnClickListener {
                 authenticate()
             }
