@@ -114,7 +114,13 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         } else {
-            Intent(Settings.ACTION_SECURITY_SETTINGS)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                //Deprecated in API level 30
+                @Suppress("DEPRECATION")
+                Intent(Settings.ACTION_FINGERPRINT_ENROLL)
+            } else {
+                Intent(Settings.ACTION_SECURITY_SETTINGS)
+            }
         }
     }
 }
